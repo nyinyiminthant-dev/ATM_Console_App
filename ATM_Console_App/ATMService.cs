@@ -147,11 +147,16 @@ public class ATMService
         {
             Console.WriteLine("Insufficient funds.");
         }
-        else
+        else if( amount > 0)
         {
             currentUser.Wallet -= amount;
             Console.WriteLine($"Withdrawal successful. New balance: {currentUser.Wallet}");
+        } else
+        {
+            Console.WriteLine("Invalid withdraw amount.\n");
         }
+
+          
     }
 
     private void Deposit()
