@@ -1,235 +1,246 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
+using ATM_Console_App.Dtos;
 
-namespace ATM_Console_App;
-
-public class ATMService
+namespace ATM_Console_App
 {
-    private List<User> users = new List<User>();
-    private User currentUser = null;
-
-    int round = 1;
-    bool log = true;
-
-    public ATMService()
+    public class ATMService
     {
+        private readonly AppDbContext _db;
+        private User? currentUser;
+        private int round = 1;
+        private List<User> users;
 
-        InitializeUsers();
-    }
-
-    private void InitializeUsers()
-    {
-        User user1 = new User("nyinyi", "nnn", 1000);
-        User user2 = new User("user2", "password2", 2000);
-        User user3 = new User("user3", "password3", 3000);
-        User user4 = new User("user4", "password4", 4000);
-        User user5 = new User("user5", "password5", 5000);
-        users.Add(user1);
-        users.Add(user2);
-        users.Add(user3);
-        users.Add(user4);
-        users.Add(user5);
-    }
-
-    public void ATMRun()
-    {
-        Console.WriteLine("Welcome to ATM Console Application.");
-        Console.WriteLine("____________________________________");
-        Console.WriteLine();
-
-        int attempts = 0;
-
-        while (currentUser == null )
+        public ATMService()
         {
-            Console.Write("Enter User ID: ");
-            string userId = Console.ReadLine()!;
-            Console.WriteLine("__________________________");
-            Console.Write("Enter Password: ");
+            _db = new AppDbContext();
+            users = _db.users.ToList();
+        }
 
-            string password = Console.ReadLine()!;
-            Console.WriteLine("__________________________");
+        public void ATMRun()
+        {
+            Console.WriteLine("Welcome to ATM Console Application.");
+            Console.WriteLine("____________________________________\n");
 
+            int attempts = 0;
 
-            currentUser = users.Find(u => u.UserID == userId && u.Password == password )!;
-
-            if (currentUser is not null)
+            while (currentUser == null)
             {
-                Console.WriteLine("Login Successful");
-                Console.WriteLine();
-                
-                ShowMenu();
-            }
-            else
-            {
-                Console.WriteLine("Login Failed");
-                attempts++;
-                if (attempts >= 3)
+                Console.Write("Enter UserName: ");
+                string userName = Console.ReadLine()!;
+                Console.WriteLine("__________________________");
+
+                Console.Write("Enter Password: ");
+                string password = Console.ReadLine()!;
+                Console.WriteLine("__________________________");
+
+                var user = users.FirstOrDefault(u => u.UserName == userName && u.Password == password);
+
+                if (user != null)
                 {
+                    if (user.Islock == "N")
+                    {
+                        currentUser = user;
+                        Console.WriteLine("Login Successful\n");
+                        ShowMenu();
+                    }
+                    else
+                    {
+                        Console.WriteLine("Your account is locked.\n");
+                        break;
+                    }
+                }
+                else
+                {
+                    attempts++;
+                    Console.WriteLine("Login Failed\n");
 
-                   
-                        Console.WriteLine("Account locked due to 3 failed login attempts. Restart the program to try again.");
-                         Console.WriteLine();
+                    if (attempts >= 3)
+                    {
+                        Console.WriteLine("Your acoount has locked due to 3 times filed password \n");
 
-                    EndProgram();
-                    break;
-                    
-                   
+                        var targetUser = users.FirstOrDefault(u => u.UserName == userName);
+                        if (targetUser != null)
+                        {
+                            targetUser.Islock = "Y";
+                            _db.users.Update(targetUser);
+                            _db.SaveChanges();
+                        }
+
+                        break;
+                    }
                 }
             }
         }
 
-
-
-
-    }
-
-    private void ShowMenu()
-    {
-
-        while (round == 1)
+        private void ShowMenu()
         {
-            Console.WriteLine("ATM-Menu");
-            Console.WriteLine("__________________________");
-            Console.WriteLine();
-            Console.WriteLine("1. Withdraw");
-            Console.WriteLine("2. Deposit");
-            Console.WriteLine("3. Check Balance");
-            Console.WriteLine("4. Logout");
-            Console.WriteLine("5. End Program");
-            Console.Write("Enter your choice: ");
-
-
-            string chose = Console.ReadLine()!;
-
-            Console.WriteLine("__________________________");
-
-            switch (chose)
+            while (round == 1)
             {
+                Console.WriteLine("ATM Menu");
+                Console.WriteLine("__________________________\n");
+                Console.WriteLine("1. Withdraw");
+                Console.WriteLine("2. Deposit");
+                Console.WriteLine("3. Check Balance");
+                Console.WriteLine("4. Logout");
+                Console.WriteLine("5. End Program");
+                Console.WriteLine("6. Report");
+                Console.Write("Enter your choice: ");
+                string choice = Console.ReadLine()!;
+                Console.WriteLine("__________________________");
 
-                case "1":
-                    Withdraw();
-                    break;
-                case "2":
-                    Deposit();
-                    break;
-                case "3":
-                    CheckBalance();
-                    break;
-                case "4":
-                    Logout();
-                    break;
-                case "5":
-                    EndProgram();
-                    break;
-                default:
-                    Console.WriteLine("Invalid choice. Please try again.");
-                    break;
+                switch (choice)
+                {
+                    case "1":
+                        Withdraw();
+                        break;
+                    case "2":
+                        Deposit();
+                        break;
+                    case "3":
+                        CheckBalance();
+                        break;
+                    case "4":
+                        Logout();
+                        break;
+                    case "5":
+                        EndProgram();
+                        break;
+                    case "6":
+                        ShowReport();
+                        break;
+                    default:
+                        Console.WriteLine("Invalid choice. Please try again.\n");
+                        break;
+                }
             }
-
-
         }
 
-    }
-
-
-
-    private void Withdraw()
-    {
-        Console.Write("Enter amount to withdraw: ");
-        decimal amount = decimal.Parse(Console.ReadLine()!);
-        Console.WriteLine("__________________________");
-        if (amount > currentUser.Wallet)
+        private void Withdraw()
         {
-            Console.WriteLine("Insufficient funds.");
-        }
-        else if( amount > 0)
-        {
-            currentUser.Wallet -= amount;
-            Console.WriteLine($"Withdrawal successful. New balance: {currentUser.Wallet}");
-        } else
-        {
-            Console.WriteLine("Invalid withdraw amount.\n");
-        }
-
-          
-    }
-
-    private void Deposit()
-    {
-        Console.Write("Enter amount to deposit: ");
-        if (decimal.TryParse(Console.ReadLine(), out decimal amount))
-        {
-            if (amount > 0)
+            Console.Write("Enter amount to withdraw: ");
+            if (decimal.TryParse(Console.ReadLine(), out decimal amount))
             {
-                currentUser.Wallet += amount;
-                Console.WriteLine($"Deposited: ${amount}. New Balance: ${currentUser.Wallet}\n");
+                Console.WriteLine("__________________________");
+                if (amount <= 0)
+                {
+                    Console.WriteLine("Invalid withdraw amount.\n");
+                }
+                else if (amount > currentUser!.Wallet)
+                {
+                    Console.WriteLine("Insufficient funds.\n");
+                }
+                else
+                {
+                    currentUser.Wallet -= amount;
+                    _db.users.Update(currentUser);
+                    _db.SaveChanges();
+
+                    AddTransaction("Withdraw", amount);
+
+                    Console.WriteLine($"Withdrawal successful. New balance: {currentUser.Wallet}\n");
+                }
             }
             else
             {
-                Console.WriteLine("Invalid deposit amount.\n");
+                Console.WriteLine("Invalid input.\n");
             }
         }
-        else
+
+        private void Deposit()
         {
-            Console.WriteLine("Invalid input.\n");
+            Console.Write("Enter amount to deposit: ");
+            if (decimal.TryParse(Console.ReadLine(), out decimal amount))
+            {
+                if (amount > 0)
+                {
+                    currentUser!.Wallet += amount;
+                    _db.users.Update(currentUser);
+                    _db.SaveChanges();
+
+                    AddTransaction("Deposit", amount);
+
+                    Console.WriteLine($"Deposited: ${amount}. New Balance: ${currentUser.Wallet}\n");
+                }
+                else
+                {
+                    Console.WriteLine("Invalid deposit amount.\n");
+                }
+            }
+            else
+            {
+                Console.WriteLine("Invalid input.\n");
+            }
         }
-    }
 
-    private void EndProgram()
-    {
-        Console.WriteLine("Exiting program...");
-        round = 0;
-        
-    }
-
-    private void Logout()
-    {
-        Console.WriteLine("Logging out successful");
-        
-        round = 0;
-
-        Console.WriteLine("__________________________");
-
-        Console.WriteLine();
-        Console.WriteLine("____________________________________");
-        Console.WriteLine();
-        Console.WriteLine("Do you want to login (y/n)?");
-
-        string  login = Console.ReadLine()!;
-
-        if (login == "y")
+        private void CheckBalance()
         {
+            Console.WriteLine($"Current Balance: ${currentUser!.Wallet}\n");
+        }
+
+        private void AddTransaction(string type, decimal amount)
+        {
+            Transaction tx = new Transaction
+            {
+                
+                UserID = currentUser!.UserID,
+                TransactionType = type,
+                Amount = amount,
+                TransactionDate = DateTime.Now
+            };
+
+            _db.Transactions.Add(tx);
+            _db.SaveChanges();
+        }
+
+        private void ShowReport()
+        {
+            Console.WriteLine($"\nTransaction Report for User: {currentUser!.UserID}");
+            Console.WriteLine("------------------------------------");
+
+            var transactions = _db.Transactions
+                .Where(t => t.UserID == currentUser.UserID)
+                .OrderByDescending(t => t.TransactionDate)
+                .ToList();
+
+            foreach (var t in transactions)
+            {
+                Console.WriteLine($"{t.TransactionDate}: {t.TransactionType} - ${t.Amount}");
+            }
 
             Console.WriteLine();
-           
-            currentUser = null;
-            round = 1;
-            ATMRun();
         }
-        else if(login == "n") {
-        
+
+        private void Logout()
+        {
+            Console.WriteLine("Logging out successful\n");
             round = 0;
 
-            EndProgram();
-            
-           
+            Console.WriteLine("Do you want to login again? (y/n)");
+            string login = Console.ReadLine()!;
+
+            if (login.ToLower() == "y")
+            {
+                currentUser = null;
+                round = 1;
+                ATMRun();
+            }
+            else if (login.ToLower() == "n")
+            {
+                EndProgram();
+            }
+            else
+            {
+                Console.WriteLine("Invalid input. Please enter 'y' or 'n'.");
+                Logout();
+            }
         }
 
-        else
+        private void EndProgram()
         {
-            Console.WriteLine("Invalid input. Please enter 'y' or 'n'.");
-            Console.WriteLine("__________________________");
-            Logout();
+            Console.WriteLine("Exiting program...");
+            round = 0;
         }
-    }
-
-    private void CheckBalance()
-    {
-        Console.WriteLine($"Current Balance: ${currentUser.Wallet}\n");
     }
 }
